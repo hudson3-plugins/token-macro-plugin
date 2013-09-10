@@ -42,14 +42,15 @@ import java.util.regex.Pattern;
  */
 class Tokenizer {
 
-    private static final String tokenNameRegex = "[a-zA-Z0-9_]+";
+    private static final String tokenNameRegex = "[a-zA-Z_][a-zA-Z0-9_]*";
 
     private static final String numberRegex = "-?[0-9]+(\\.[0-9]*)?";
 
     private static final String boolRegex = "(true)|(false)";
-    // Sequence of (1) not \ " CR LF and (2) \ followed by non line terminator
 
-    private static final String stringRegex = "\"([^\\\\\"\\r\\n]|(\\\\.))*\"";
+    // Sequence of (1) not \ " CR LF and (2) \ followed by (CR)LF, or not CR LF
+    // Use possessive quantifier to prevent stack overflow (see HUDSON-14132)
+    private static final String stringRegex = "\"([^\\\\\"\\r\\n]|(\\\\(?:\r?\n|.)))*+\"";
 
     private static final String valueRegex = "(" + numberRegex + ")|(" + boolRegex + ")|(" + stringRegex + ")";
 
@@ -61,16 +62,18 @@ class Tokenizer {
 
     private static final String delimitedTokenRegex = "\\{" + spaceRegex + "(" + tokenNameRegex + ")" + argsRegex + spaceRegex + "\\}";
 
-    private static final String tokenRegex = "(?<!\\\\)\\$((" + tokenNameRegex + ")|(" + delimitedTokenRegex + "))";
+    private static final String tokenRegex = "(\\$?)\\$((" + tokenNameRegex + ")|(" + delimitedTokenRegex + "))";
 
     private static final Pattern argPattern = Pattern.compile(argRegex);
 
     private static final Pattern tokenPattern = Pattern.compile(tokenRegex);
+    
+    private static final String ESCAPE_STRING = "$$";
 
     private final Matcher tokenMatcher;
 
     private String tokenName = null;
-
+    
     private ListMultimap<String,String> args = null;
 
     Tokenizer(String origText) {
@@ -88,20 +91,28 @@ class Tokenizer {
     String group() {
         return tokenMatcher.group();
     }
+    
+    boolean isEscaped() {
+        return tokenMatcher.group().startsWith(ESCAPE_STRING);
+    }
 
     boolean find() {
-        if (tokenMatcher.find()) {
-            tokenName = tokenMatcher.group(2);
+        if (tokenMatcher.find()) { 
+            if(isEscaped()) {
+                return true;                
+            }
+            
+            tokenName = tokenMatcher.group(3);
             if (tokenName == null) {
-                tokenName = tokenMatcher.group(4);
+                tokenName = tokenMatcher.group(5);
             }
             args = Multimaps.newListMultimap(new TreeMap<String, Collection<String>>(),new Supplier<List<String>>() {
                 public List<String> get() {
                     return new ArrayList<String>();
                 }
             });
-            if (tokenMatcher.group(5) != null) {
-                parseArgs(tokenMatcher.group(5), args);
+            if (tokenMatcher.group(6) != null) {
+                parseArgs(tokenMatcher.group(6), args);
             }
             return true;
         } else {

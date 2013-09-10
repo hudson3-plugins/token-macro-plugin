@@ -33,7 +33,9 @@ import hudson.model.TaskListener;
 import org.apache.commons.lang.StringUtils;
 
 import java.io.IOException;
+import java.text.MessageFormat;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -149,34 +151,56 @@ public abstract class TokenMacro implements ExtensionPoint {
      *      String that contains macro references in it, like "foo bar ${zot}".
      */
     public static String expand(AbstractBuild<?,?> context, TaskListener listener, String stringWithMacro) throws MacroEvaluationException, IOException, InterruptedException {
+        return expand(context, listener, stringWithMacro, true, null);
+    }
+
+    public static String expand(AbstractBuild<?,?> context, TaskListener listener, String stringWithMacro, boolean throwException, List<TokenMacro> privateTokens) throws MacroEvaluationException, IOException, InterruptedException {
         if ( StringUtils.isBlank( stringWithMacro ) ) return stringWithMacro;
         StringBuffer sb = new StringBuffer();
         Tokenizer tokenizer = new Tokenizer(stringWithMacro);
 
         ExtensionList<TokenMacro> all = all();
+        if(privateTokens!=null) {
+            all.addAll( privateTokens );
+        }
 
         while (tokenizer.find()) {
-            String tokenName = tokenizer.getTokenName();
-            ListMultimap<String,String> args = tokenizer.getArgs();
-            Map<String,String> map = new HashMap<String, String>();
-            for (Entry<String, String> e : args.entries()) {
-                map.put(e.getKey(),e.getValue());
-            }
-
             String replacement = null;
-            for (TokenMacro tm : all) {
-                if (tm.acceptsMacroName(tokenName)) {
-                    replacement = tm.evaluate(context,listener,tokenName,map,args);
-                    if(tm.hasNestedContent()) {
-                        replacement = expand(context,listener,replacement);
-                    }
-                    break;
+            if(tokenizer.isEscaped()) {
+                replacement = tokenizer.group().substring(1);                                
+            } else {            
+                String tokenName = tokenizer.getTokenName();
+                ListMultimap<String,String> args = tokenizer.getArgs();
+                Map<String,String> map = new HashMap<String, String>();
+                for (Entry<String, String> e : args.entries()) {
+                    map.put(e.getKey(),e.getValue());
                 }
-            }
-            if (replacement==null)
-                throw new MacroEvaluationException(String.format("Unrecognized macro '%s' in '%s'", tokenName, stringWithMacro));
 
-            tokenizer.appendReplacement(sb, replacement);
+                for (TokenMacro tm : all) {
+                    if (tm.acceptsMacroName(tokenName)) {
+                        try {
+                            replacement = tm.evaluate(context,listener,tokenName,map,args);
+                            if(tm.hasNestedContent()) {
+                                replacement = expand(context,listener,replacement,throwException,privateTokens);
+                            }
+                        } catch(MacroEvaluationException e) {
+                            if(throwException) {
+                                throw e;
+                            } else {
+                                replacement = String.format("[Error replacing '%s' - %s]", tokenName, e.getMessage());
+                            }
+                        }
+                        break;
+                    }
+                }
+                
+                if (replacement == null && throwException)
+                    throw new MacroEvaluationException(String.format("Unrecognized macro '%s' in '%s'", tokenName, stringWithMacro));
+            }
+            if (replacement == null && !throwException) // just put the token back in since we don't want to throw the exception
+                tokenizer.appendReplacement(sb, tokenizer.group());
+            else
+                tokenizer.appendReplacement(sb, replacement);
         }
         tokenizer.appendTail(sb);
 
@@ -195,6 +219,10 @@ public abstract class TokenMacro implements ExtensionPoint {
      *      String that contains macro references in it, like "foo bar ${zot}".
      */
     public static String expandAll(AbstractBuild<?,?> context, TaskListener listener, String stringWithMacro) throws MacroEvaluationException, IOException, InterruptedException {
+        return expandAll(context,listener,stringWithMacro,true,null);
+    }
+
+    public static String expandAll(AbstractBuild<?,?> context, TaskListener listener, String stringWithMacro, boolean throwException, List<TokenMacro> privateTokens) throws MacroEvaluationException, IOException, InterruptedException {
         // Do nothing for an empty String
         if (stringWithMacro==null || stringWithMacro.length()==0) return stringWithMacro;
         // Expand environment variables
@@ -202,7 +230,7 @@ public abstract class TokenMacro implements ExtensionPoint {
         // Expand build variables
         s = Util.replaceMacro(s,context.getBuildVariableResolver());
         // Expand Macros
-        s = expand(context,listener,s);
+        s = expand(context,listener,s,throwException,privateTokens);
         return s;
     }
 }

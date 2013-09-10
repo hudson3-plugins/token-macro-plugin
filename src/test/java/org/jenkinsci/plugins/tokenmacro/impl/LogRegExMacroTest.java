@@ -12,24 +12,21 @@ import org.jenkinsci.plugins.tokenmacro.*;
 import org.jvnet.hudson.test.HudsonTestCase;
 import org.jvnet.hudson.test.TestBuilder;
 
-/**
- * @author Kohsuke Kawaguchi
- */
-public class PropertyFromFileMacroTest extends HudsonTestCase {
+public class LogRegExMacroTest extends HudsonTestCase {
     private TaskListener listener;
 
     public void testPropertyFromFileExpansion() throws Exception {
-        FreeStyleProject project = createFreeStyleProject("foo");
+        FreeStyleProject project = createFreeStyleProject("tester");
         project.getBuildersList().add(new TestBuilder() {
             @Override
             public boolean perform(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener) throws InterruptedException, IOException {
-                build.getWorkspace().child("test.properties").write("test.property=success","UTF-8");
+                listener.getLogger().println("Test Property 123");
                 return true;
             }
         });
         FreeStyleBuild b = project.scheduleBuild2(0).get();
 
         listener = new StreamTaskListener(System.out);
-        assertEquals("success",TokenMacro.expand(b, listener, "${PROPFILE,file=\"test.properties\",property=\"test.property\"}"));
+        assertEquals("value 123",TokenMacro.expand(b, listener, "${LOG_REGEX,regex=\"Test Property (123)\",replacement=\"value \\\\1\"}"));
     }
 }
