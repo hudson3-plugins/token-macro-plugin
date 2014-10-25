@@ -29,46 +29,6 @@
       <email>slide.o.mix@gmail.com</email>
     </developer>
   </developers>
-
-  <!--
-  <dependencies>
-    <dependency>
-      <groupId>org.jenkins-ci.main</groupId>
-      <artifactId>jenkins-war</artifactId>
-      <version>${jenkins.version}</version>
-      <type>war</type>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.jenkins-ci.main</groupId>
-      <artifactId>jenkins-core</artifactId>
-      <version>${jenkins.version}</version>
-      <scope>provided</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.jenkins-ci.main</groupId>
-      <artifactId>maven-plugin</artifactId>
-      <version>${jenkins.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.jenkins-ci.main</groupId>
-      <artifactId>ui-samples-plugin</artifactId>
-      <version>${jenkins.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.jenkins-ci.main</groupId>
-      <artifactId>jenkins-test-harness</artifactId>
-      <version>${jenkins.version}</version>
-      <scope>test</scope>
-    </dependency>
-  </dependencies>
-
-  <properties>
-    <jenkins.version>1.396</jenkins.version>
-  </properties>
-  -->
   
   <scm>
     <connection>scm:git:git://github.com/hudson3-plugins/token-macro-plugin.git</connection>
@@ -81,26 +41,19 @@
       <plugin>
         <groupId>org.eclipse.hudson.tools</groupId>
         <artifactId>maven-hpi-plugin</artifactId>
-        <version>3.0.0</version>
+        <version>3.0.3</version>
       </plugin>                     
     </plugins>
   </build>
 
-  
-
-    <pluginRepositories>
-        <pluginRepository>
-            <id>repo.jenkins-ci.org</id>
-            <url>http://repo.jenkins-ci.org/public/</url>
-        </pluginRepository>
-    </pluginRepositories>
-<licenses>
+  <licenses>
     <license>
       <name>The MIT license</name>
       <url>http://opensource.org/licenses/MIT</url>
       <distribution>repo</distribution>
     </license>
   </licenses>
+  
   <properties>
     <hudsonTags>misc</hudsonTags>
   </properties>
